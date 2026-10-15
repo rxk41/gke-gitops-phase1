@@ -1,6 +1,7 @@
 # Performance smoke test (k6)
 
 Install k6 locally, deploy the app, then run:
+#added
 
 ```bash
 k6 run -e BASE_URL=http://YOUR_FRONTEND_LOAD_BALANCER_IP performance/k6-smoke.js
