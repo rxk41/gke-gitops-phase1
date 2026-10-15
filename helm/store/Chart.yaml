@@ -1,0 +1,6 @@
+apiVersion: v2
+name: store
+description: Simple React + Product API + Order API + PostgreSQL application for GKE
+version: 0.2.0
+appVersion: "1.0.0"
+type: application

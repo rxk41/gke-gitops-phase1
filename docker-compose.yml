@@ -1,0 +1,30 @@
+services:
+  postgresql:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: store
+      POSTGRES_USER: store
+      POSTGRES_PASSWORD: local-only-change-me
+    ports: ["5432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U store -d store"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  product-api:
+    build: ./services/product-api
+    environment: { DB_HOST: postgresql, DB_NAME: store, DB_USER: store, DB_PASSWORD: local-only-change-me }
+    depends_on: { postgresql: { condition: service_healthy } }
+    ports: ["8001:8000"]
+  order-api:
+    build: ./services/order-api
+    environment: { DB_HOST: postgresql, DB_NAME: store, DB_USER: store, DB_PASSWORD: local-only-change-me }
+    depends_on: { postgresql: { condition: service_healthy } }
+    ports: ["8002:8000"]
+  frontend:
+    build: ./services/frontend
+    ports: ["8080:80"]
+    depends_on: [product-api, order-api]
+volumes:
+  postgres-data:

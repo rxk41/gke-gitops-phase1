@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: store
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/rxk41/GitOps.git
+    targetRevision: main
+    path: helm/store
+    helm:
+      valueFiles: [values.yaml]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: microservices
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

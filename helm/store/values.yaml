@@ -1,0 +1,24 @@
+namespace: microservices
+replicaCount: 2
+imagePullPolicy: IfNotPresent
+images:
+  frontend: us-central1-docker.pkg.dev/k8s-learning-510807/microservices/product-frontend:latest
+  productApi: us-central1-docker.pkg.dev/k8s-learning-510807/microservices/product-api:latest
+  orderApi: us-central1-docker.pkg.dev/k8s-learning-510807/microservices/order-api:latest
+postgres:
+  image: postgres:16-alpine
+  storage: 5Gi
+  storageClassName: standard-rwo
+  # Learning-only default. Override with a Secret before any shared deployment.
+  existingSecret: store-postgres-auth
+resources:
+  frontend: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 300m, memory: 128Mi } }
+  api: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+affinity:
+  enabled: true
+  # Soft spread so a 2-node learning cluster can still schedule workloads.
+nodeSelector: {}
+tolerations: []

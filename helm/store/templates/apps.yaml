@@ -1,0 +1,77 @@
+{{- $ns := .Values.namespace -}}
+{{- $services := list (dict "name" "frontend" "image" .Values.images.frontend "port" 80 "target" 80 "resources" .Values.resources.frontend) (dict "name" "product-api" "image" .Values.images.productApi "port" 8000 "target" 8000 "resources" .Values.resources.api) (dict "name" "order-api" "image" .Values.images.orderApi "port" 8000 "target" 8000 "resources" .Values.resources.api) -}}
+{{- range $s := $services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $s.name }}
+  namespace: {{ $ns }}
+spec:
+  type: {{ if eq $s.name "frontend" }}LoadBalancer{{ else }}ClusterIP{{ end }}
+  selector: { app: {{ $s.name }} }
+  ports: [{ name: http, port: {{ $s.port }}, targetPort: {{ $s.target }} }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $s.name }}
+  namespace: {{ $ns }}
+  labels: { app: {{ $s.name }} }
+spec:
+  replicas: {{ $.Values.replicaCount }}
+  selector: { matchLabels: { app: {{ $s.name }} } }
+  template:
+    metadata:
+      labels: { app: {{ $s.name }} }
+    spec:
+      {{ if $.Values.affinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchExpressions: [{ key: app, operator: In, values: [{{ $s.name }}] }]
+      {{ end }}
+      {{ with $.Values.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{ end }}
+      {{ with $.Values.tolerations }}
+      tolerations: {{ toYaml . | nindent 8 }}
+      {{ end }}
+      containers:
+        - name: {{ $s.name }}
+          image: {{ $s.image | quote }}
+          imagePullPolicy: {{ $.Values.imagePullPolicy }}
+          ports: [{ name: http, containerPort: {{ $s.target }} }]
+          resources: {{ toYaml $s.resources | nindent 12 }}
+          {{ if ne $s.name "frontend" }}
+          env:
+            - { name: DB_HOST, value: postgresql }
+            - { name: DB_PORT, value: "5432" }
+            - { name: DB_NAME, value: store }
+            - { name: DB_USER, value: store }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $.Values.postgres.existingSecret }}, key: password } }
+          readinessProbe: { httpGet: { path: /health/ready, port: 8000 }, initialDelaySeconds: 10, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /health/live, port: 8000 }, initialDelaySeconds: 15, periodSeconds: 10 }
+          {{ else }}
+          readinessProbe: { httpGet: { path: /health, port: 80 }, initialDelaySeconds: 3, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /health, port: 80 }, initialDelaySeconds: 10, periodSeconds: 10 }
+          {{ end }}
+{{ end }}
+{{ if .Values.podDisruptionBudget.enabled }}
+{{ range $app := list "frontend" "product-api" "order-api" }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $app }}-pdb
+  namespace: {{ $.Values.namespace }}
+spec:
+  minAvailable: {{ $.Values.podDisruptionBudget.minAvailable }}
+  selector: { matchLabels: { app: {{ $app }} } }
+{{ end }}
+{{ end }}
