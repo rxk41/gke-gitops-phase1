@@ -4,7 +4,7 @@ resource "google_container_cluster" "this" {
   location = var.zone
   network = var.network_name
   subnetwork = var.subnetwork_name
-  deletion_protection = true
+  deletion_protection = false
   remove_default_node_pool = true
   initial_node_count = 1
   networking_mode = "VPC_NATIVE"
@@ -19,7 +19,7 @@ resource "google_container_cluster" "this" {
     horizontal_pod_autoscaling { disabled = false }
   }
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     # Keep this module disabled until existing cluster configuration is reconciled.
   }
 }
@@ -39,7 +39,7 @@ resource "google_container_node_pool" "primary" {
     auto_repair = true
     auto_upgrade = true
   }
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = false
+  # }
 }
