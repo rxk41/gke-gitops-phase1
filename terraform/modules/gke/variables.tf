@@ -26,3 +26,8 @@ variable "machine_type" {
 variable "node_pool_name" {
   type = string
 }
+
+
+variable "disk_size_gb" {
+  type    = number
+}
